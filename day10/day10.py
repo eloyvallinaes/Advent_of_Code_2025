@@ -1,6 +1,6 @@
-from abc import abstractmethod
+from itertools import permutations
+from pdb import lasti2lineno
 import re
-import statistics
 
 
 example = [
@@ -9,7 +9,9 @@ example = [
     '[.###.#] (0,1,2,3,4) (0,3,4) (0,1,2,4,5) (1,2) {10,11,11,5,10,5}',
 ]
 
-def parse_example_row(row):
+full = [r.strip() for r in open('input.txt', 'r').readlines()]
+
+def parse_row(row):
     # Split by brackets and parentheses
     parts = row.split('] ')
     target = parts[0][1:]  # Remove leading '['
@@ -33,34 +35,56 @@ def parse_example_row(row):
     return target, moves, joltage
 
 # Parse all examples
-parsed_examples = [parse_example_row(row) for row in example]
+parsed_examples = [parse_row(row) for row in example]
+parsed_full = [parse_row(row) for row in full]
 
-class Indicator():
-    def __init__(self, target:str, moves:list[tuple]):
-        self.state = '.' * len(target)
-        self.target = target
-        self.moves = moves
+def toggle(s:str):
+    if s == '.':
+        return '#'
+    elif s == '#':
+        return '.'
 
-    def press(self, button:int):
-        move = self.moves[button]
-        new = ''
-        for i, s in enumerate(self.state):
-            if i in move:
-                new += self.toggle(s)
-            else:
-                new += s
-        self.state = new
+def press(state:str, move:tuple[int]):
+    new = ''
+    for i, s in enumerate(state):
+        if i in move:
+            new += toggle(s)
+        else:
+            new += s
+    return new
 
-    @staticmethod
-    def toggle(s:str):
-        if s == '.':
-            return '#'
-        elif s == '#':
-            return '.'
-        
-    def search(self):
-        c = 0
-        if self.state == self.target:
-            return c
-        
-        
+def solve(state, target, moves, memo=None, path=None):
+    if memo is None:
+        memo = {}
+    if path is None:
+        path = []
+    # end cases
+    if state == target: return []
+    if state in memo: return memo[state]
+    if state in path: return None
+
+    best = None
+    path.append(state)
+    for move in moves:
+        result = solve(press(state, move), target, moves, memo=memo, path=path.copy()) 
+        if result is not None:
+            result = [move] + result
+            if best is None or len(result) < len(best):
+                best = result
+
+    memo.update({state: best})
+    return best
+
+part1 = 0
+for target, moves, _ in parsed_examples:
+    state = '.' * len(target)
+    part1 += len(solve(state, target, moves))
+
+print(f'{part1 = }')
+
+part1 = 0
+for target, moves, _ in parsed_full:
+    state = '.' * len(target)
+    part1 += len(solve(state, target, moves))
+
+print(f'{part1 = }')
